@@ -1,0 +1,18 @@
+{
+  "name": "llm-logger",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LLM inference logging and ingestion system",
+  "workspaces": [
+    "frontend",
+    "ingestion"
+  ],
+  "scripts": {
+    "seed": "tsx scripts/seed.ts",
+    "screenshots": "tsx scripts/screenshots.ts",
+    "playwright:install": "playwright install chromium",
+    "prisma:generate": "cd frontend && npx prisma generate",
+    "prisma:migrate": "cd frontend && npx prisma migrate deploy",
+    "prisma:push": "cd frontend && npx prisma db push"
+  }
+}
