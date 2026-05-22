@@ -17,9 +17,6 @@ Thumbs.db
 frontend/prisma/migrations/dev.db*
 ingestion/prisma/
 
-docs/screenshots/*.png
-!docs/screenshots/.gitkeep
-
 .vscode/
 .idea/
 *.swp
