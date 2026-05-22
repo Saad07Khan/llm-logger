@@ -13,11 +13,11 @@ export function ProviderTable({ rows }: Props) {
       <table className="w-full text-left">
         <thead>
           <tr className="border-b border-sand">
-            <th className="mono px-5 py-3">Provider</th>
-            <th className="mono px-5 py-3">Requests</th>
-            <th className="mono px-5 py-3">Avg latency</th>
-            <th className="mono px-5 py-3">Errors</th>
-            <th className="mono px-5 py-3">Error rate</th>
+            <th className="mono px-5 py-3 whitespace-nowrap">Provider</th>
+            <th className="mono px-5 py-3 whitespace-nowrap">Requests</th>
+            <th className="mono px-5 py-3 whitespace-nowrap">Avg latency</th>
+            <th className="mono px-5 py-3 whitespace-nowrap">Errors</th>
+            <th className="mono px-5 py-3 whitespace-nowrap">Error rate</th>
           </tr>
         </thead>
         <tbody>

@@ -65,11 +65,11 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen">
       <header className="nav-bar sticky top-0 z-10">
-        <div className="max-w-container mx-auto pl-16 pr-4 sm:pl-4 sm:pr-6 md:px-8 h-14 flex items-center justify-between gap-3 flex-wrap">
+        <div className="max-w-container mx-auto pl-16 pr-3 md:px-8 min-h-14 py-2 flex items-center justify-between gap-2 flex-wrap">
           <div className="section-label" style={{ display: 'inline-flex' }}>
             Chat
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 ml-auto flex-wrap">
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
             <ProviderSelect value={provider} onChange={handleProviderChange} disabled={isStreaming} />
             <button type="button" className="btn btn-outline" onClick={startNewConversation}>
               New

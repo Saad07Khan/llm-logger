@@ -320,14 +320,6 @@ a {
     letter-spacing: 1.1px;
     color: var(--color-icon-gray);
   }
-  .section-label::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: var(--color-accent-orange);
-    border-radius: 999px;
-    display: inline-block;
-  }
 }
 
 @layer utilities {
