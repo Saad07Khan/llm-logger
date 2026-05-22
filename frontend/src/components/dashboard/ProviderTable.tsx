@@ -9,8 +9,8 @@ export function ProviderTable({ rows }: Props) {
   const entries = Object.entries(rows);
 
   return (
-    <div className="surface-card !p-0 overflow-hidden">
-      <table className="w-full text-left">
+    <div className="surface-card !p-0">
+      <table className="w-full min-w-[520px] text-left">
         <thead>
           <tr className="border-b border-sand">
             <th className="mono px-5 py-3 whitespace-nowrap">Provider</th>
