@@ -86,6 +86,8 @@ function ChatPageInner() {
   };
 
   const isPaused = conversation?.status === 'PAUSED';
+  const isCancelled = conversation?.status === 'CANCELLED';
+  const isReadOnly = isPaused || isCancelled;
   const showBreadcrumb = !!conversation;
 
   return (
@@ -120,6 +122,7 @@ function ChatPageInner() {
             <span className="badge badge-provider">{conversation.model}</span>
           )}
           {isPaused && <span className="badge badge-paused">Paused</span>}
+          {isCancelled && <span className="badge badge-cancelled">Cancelled</span>}
         </div>
       )}
 
@@ -147,6 +150,31 @@ function ChatPageInner() {
         </div>
       )}
 
+      {isCancelled && (
+        <div className="max-w-container mx-auto w-full px-4 sm:px-8 pt-3">
+          <div
+            className="surface-card flex flex-wrap items-center gap-3 p-4"
+            style={{ background: 'var(--color-surface-cream)' }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="section-label" style={{ display: 'inline-flex' }}>
+                Cancelled
+              </div>
+              <p className="mt-2 text-[14px] text-[color:var(--color-headline-black)]">
+                This conversation has been cancelled. It is read-only and cannot be reopened. Start
+                a new conversation to keep chatting.
+              </p>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={startNewConversation}>
+              New conversation
+            </button>
+            <Link href="/conversations" className="btn btn-ghost">
+              All conversations
+            </Link>
+          </div>
+        </div>
+      )}
+
       <ChatWindow
         messages={messages}
         streamingText={streamingText}
@@ -157,8 +185,14 @@ function ChatPageInner() {
         onSend={handleSend}
         onCancel={cancel}
         isStreaming={isStreaming}
-        disabled={isPaused}
-        placeholder={isPaused ? 'Resume this conversation to send a message…' : undefined}
+        disabled={isReadOnly}
+        placeholder={
+          isCancelled
+            ? 'This conversation has been cancelled and is read-only.'
+            : isPaused
+            ? 'Resume this conversation to send a message…'
+            : undefined
+        }
       />
     </div>
   );

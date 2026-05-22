@@ -15,7 +15,9 @@ interface Props {
 function StatusBadge({ status }: { status: ConversationStatus }) {
   if (status === 'ACTIVE')
     return <span className="badge badge-active">Active</span>;
-  return <span className="badge badge-paused">Paused</span>;
+  if (status === 'PAUSED')
+    return <span className="badge badge-paused">Paused</span>;
+  return <span className="badge badge-cancelled">Cancelled</span>;
 }
 
 export function ConversationCard({ conversation, onSetStatus, onDelete, featured }: Props) {
@@ -49,7 +51,7 @@ export function ConversationCard({ conversation, onSetStatus, onDelete, featured
         <Link href={`/chat?id=${conversation.id}`} className="btn btn-outline">
           Open
         </Link>
-        {conversation.status === 'ACTIVE' ? (
+        {conversation.status === 'ACTIVE' && (
           <button
             type="button"
             className="btn btn-ghost"
@@ -57,13 +59,32 @@ export function ConversationCard({ conversation, onSetStatus, onDelete, featured
           >
             Pause
           </button>
-        ) : (
+        )}
+        {conversation.status === 'PAUSED' && (
           <button
             type="button"
             className="btn btn-ghost"
             onClick={() => onSetStatus(conversation.id, 'ACTIVE')}
           >
             Resume
+          </button>
+        )}
+        {conversation.status !== 'CANCELLED' && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              if (
+                typeof window === 'undefined' ||
+                window.confirm(
+                  'Cancel this conversation? Once cancelled it cannot be reopened. The conversation will remain readable. To remove it entirely, use Delete.'
+                )
+              ) {
+                onSetStatus(conversation.id, 'CANCELLED');
+              }
+            }}
+          >
+            Cancel
           </button>
         )}
         <button

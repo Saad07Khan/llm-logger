@@ -38,7 +38,11 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  let body: { status?: 'ACTIVE' | 'PAUSED'; title?: string; provider?: string };
+  let body: {
+    status?: 'ACTIVE' | 'PAUSED' | 'CANCELLED';
+    title?: string;
+    provider?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -47,6 +51,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   const existing = await prisma.conversation.findUnique({ where: { id: params.id } });
   if (!existing) return Response.json({ error: 'Not found' }, { status: 404 });
+
+  // CANCELLED is terminal. The only edit allowed once cancelled is DELETE.
+  if (existing.status === 'CANCELLED') {
+    return Response.json(
+      { error: 'Conversation is cancelled and cannot be modified' },
+      { status: 409 }
+    );
+  }
 
   const updated = await prisma.conversation.update({
     where: { id: params.id },

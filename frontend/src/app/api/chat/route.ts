@@ -45,6 +45,12 @@ export async function POST(req: NextRequest) {
       { status: 409 }
     );
   }
+  if (conversation.status === 'CANCELLED') {
+    return Response.json(
+      { error: 'Conversation is cancelled and cannot accept new messages' },
+      { status: 409 }
+    );
+  }
 
   const providerId = body.provider ?? conversation.provider;
   let provider;

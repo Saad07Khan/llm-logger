@@ -170,6 +170,8 @@ export function Sidebar() {
               )}
               {conversations.map((c) => {
                 const isPaused = c.status === 'PAUSED';
+                const isCancelled = c.status === 'CANCELLED';
+                const isMuted = isPaused || isCancelled;
                 const isActive = pathname === '/chat' && c.id === activeId;
                 return (
                   <Link
@@ -184,7 +186,7 @@ export function Sidebar() {
                       <div
                         className={cn(
                           'text-[13px] leading-snug truncate flex-1 min-w-0',
-                          isPaused
+                          isMuted
                             ? 'text-[color:var(--color-mid-gray)]'
                             : 'text-[color:var(--color-headline-black)]'
                         )}
@@ -193,6 +195,9 @@ export function Sidebar() {
                       </div>
                       {isPaused && (
                         <span className="badge badge-paused shrink-0">Paused</span>
+                      )}
+                      {isCancelled && (
+                        <span className="badge badge-cancelled shrink-0">Cancelled</span>
                       )}
                     </div>
                     <div className="mt-1 flex items-center gap-2">

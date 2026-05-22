@@ -46,6 +46,9 @@ It is intentionally small enough to fit in one repo, but the seams are real: the
 ### Paused conversation (Resume banner, input disabled)
 ![Paused banner](docs/screenshots/paused-banner.png)
 
+### Cancelled conversation (terminal, no Resume, read-only)
+![Cancelled banner](docs/screenshots/cancelled-banner.png)
+
 ### Metrics dashboard
 ![Metrics dashboard](docs/screenshots/dashboard.png)
 
@@ -101,7 +104,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full ingestion flow, failure hand
 Streaming chat. Provider selector (Groq / Gemini / OpenAI / Anthropic) and model are switchable per conversation. Live status: streaming dots while waiting for the first token, animated cursor for active deltas, Cancel button that aborts the in-flight call (and records `status=CANCELLED` on the log). Sidebar Recent list updates instantly when anything changes (no polling lag).
 
 ### `/conversations`
-A grid view of every conversation. Tabs at the top filter by status (All / Active / Paused) with live counts. Each card shows the title, last message preview, provider chip, message count, and time since update. Per-card actions: Open, Pause (or Resume if already paused), Delete. Deletes cascade through messages and inference logs and propagate to the sidebar Recent in the same render tick.
+A grid view of every conversation. Tabs at the top filter by status (All / Active / Paused / Cancelled) with live counts. Each card shows the title, last message preview, provider chip, message count, and time since update. Per-card actions adapt to status: Active shows Open, Pause, Cancel, Delete. Paused shows Open, Resume, Cancel, Delete. Cancelled shows only Open and Delete. Deletes cascade through messages and inference logs and propagate to the sidebar Recent in the same render tick.
 
 ### `/dashboard`
 Inference metrics across all providers. Window selector for the last 1h / 6h / 24h / 7d. Four KPI tiles (total requests, average latency, error rate, total tokens), three time-series charts (latency over time, throughput, errors), and a per-provider breakdown table with average latency, error count, and error rate.
@@ -121,14 +124,20 @@ Groq is the default and the recommended starter because the free tier has genero
 
 ## Conversation lifecycle
 
-A conversation has two states:
+Three states, designed to map cleanly to user intent.
 
-- **Active.** Default. Fully writable.
-- **Paused.** Read-only. The chat page shows a Paused breadcrumb chip, a banner with a Resume button and an "All conversations" link, and the input textarea is disabled with a placeholder that explains why.
+- **Active.** Default. Fully writable. Tokens flow, the dashboard logs each call.
+- **Paused.** Reversibly frozen. The chat page shows a Paused breadcrumb chip, a banner with a Resume button and an "All conversations" link, and the input textarea is disabled with a placeholder that explains why. Click Resume on the banner (or on the conversation card) to flip back to Active.
+- **Cancelled.** Terminal. No way back. Once cancelled, the chat is read-only, the only banner action is "Start a new conversation", and the input placeholder reads "This conversation has been cancelled and is read-only." There is no Resume button anywhere. The conversation card on the dashboard collapses to two actions: Open and Delete. Use Delete if you want the data gone too; Cancelled keeps the history for audit but stops all writes.
 
-Pause and Resume are explicit user actions on the dashboard or on the chat page. There is no auto-archival. The earlier draft of this app had a third "Completed" status but no flow ever populated it, so it was removed in favor of a two-state model that maps cleanly to user intent. The schema migration (`prisma/migrate-statuses.js`) renames `CANCELLED` to `PAUSED` in place and drops `COMPLETED`, so upgrading an existing database is a no-op restart.
+Pause, Resume, and Cancel are explicit user actions. There is no auto-archival. Because Cancel is irreversible, the conversation card's Cancel button triggers a confirmation prompt before firing.
 
-Mutations propagate through a small `conversations:changed` `CustomEvent` so the sidebar, the chat view, and the conversations grid all stay in sync instantly. There is no polling round-trip.
+The server enforces all three transitions, not just the UI:
+
+- `POST /api/chat` returns `409` if the target conversation is Paused or Cancelled, so a stale client cannot smuggle a message through.
+- `PATCH /api/conversations/[id]` returns `409` for any edit attempt on a Cancelled conversation, including a status change back to Active. Cancelled is genuinely terminal at the database level, not just visually.
+
+Mutations propagate through a `conversations:changed` `CustomEvent` so the sidebar, the chat view, and the conversations grid all stay in sync instantly. There is no polling round-trip.
 
 ## SDK logger and PII redaction
 
@@ -226,7 +235,7 @@ model InferenceLog {
   @@index([createdAt])
 }
 
-enum ConversationStatus { ACTIVE PAUSED }
+enum ConversationStatus { ACTIVE PAUSED CANCELLED }
 enum Role               { USER ASSISTANT SYSTEM }
 enum RequestStatus      { SUCCESS ERROR TIMEOUT CANCELLED }
 ```
@@ -320,7 +329,9 @@ The `.env` file is gitignored. Only `.env.example` is committed, and it has blan
 
 **`docker compose up` hangs on "Generating static pages".** First build is slow; Next runs prerender on every page. Subsequent builds are cached. If a real failure surfaces, the most common cause on Next 14 is a server component reading `useSearchParams` outside a Suspense boundary. The repo wraps all such reads.
 
-**`/api/chat` returns 409 with "Conversation is paused".** Expected. Pause is enforced on the server too, not just in the UI. Open the conversation and click Resume.
+**`/api/chat` returns 409 with "Conversation is paused" or "Conversation is cancelled".** Expected. Both states are enforced on the server, not just in the UI. Paused is reversible (open and click Resume). Cancelled is terminal; start a new conversation.
+
+**`PATCH /api/conversations/[id]` returns 409 with "Conversation is cancelled and cannot be modified".** Also expected. Cancelled rejects every edit, including un-cancel attempts. The only operation allowed is `DELETE`.
 
 **Dashboard shows 100% errors for one provider.** Likely a quota or API-key issue with that specific provider. Check the InferenceLog row's `errorMessage` (the SDK records the real response), or just rotate the key.
 

@@ -257,6 +257,10 @@ a {
     background: var(--color-surface-cream);
     color: var(--color-icon-gray);
   }
+  .badge-cancelled {
+    background: rgba(201, 54, 54, 0.06);
+    color: var(--color-error);
+  }
   .badge-provider {
     background: var(--color-surface-cream);
     color: var(--color-headline-black);

@@ -11,6 +11,7 @@ const FILTERS: Array<{ key: 'ALL' | ConversationStatus; label: string }> = [
   { key: 'ALL', label: 'All' },
   { key: 'ACTIVE', label: 'Active' },
   { key: 'PAUSED', label: 'Paused' },
+  { key: 'CANCELLED', label: 'Cancelled' },
 ];
 
 export default function ConversationsPage() {
@@ -28,6 +29,7 @@ export default function ConversationsPage() {
       ALL: conversations.length,
       ACTIVE: conversations.filter((c) => c.status === 'ACTIVE').length,
       PAUSED: conversations.filter((c) => c.status === 'PAUSED').length,
+      CANCELLED: conversations.filter((c) => c.status === 'CANCELLED').length,
     };
   }, [conversations]);
 
@@ -58,8 +60,8 @@ export default function ConversationsPage() {
           Conversations
         </h1>
         <p className="mt-3 text-[15px] text-muted max-w-[520px]">
-          Every chat is logged with provider, model, latency, and token counts. Filter by status to
-          triage active or paused sessions.
+          Every chat is logged with provider, model, latency, and token counts. Active sessions are
+          writable, Paused are reversibly frozen, Cancelled are terminal.
         </p>
 
         <div className="mt-8 flex items-center gap-1 border-b border-sand overflow-x-auto scrollbar-thin">
