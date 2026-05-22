@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
   if (!conversation) {
     return Response.json({ error: 'Conversation not found' }, { status: 404 });
   }
-  if (conversation.status === 'CANCELLED') {
+  if (conversation.status === 'PAUSED') {
     return Response.json(
-      { error: 'Conversation is cancelled' },
+      { error: 'Conversation is paused' },
       { status: 409 }
     );
   }

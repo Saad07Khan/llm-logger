@@ -73,8 +73,7 @@ model InferenceLog {
 
 enum ConversationStatus {
   ACTIVE
-  CANCELLED
-  COMPLETED
+  PAUSED
 }
 
 enum Role {

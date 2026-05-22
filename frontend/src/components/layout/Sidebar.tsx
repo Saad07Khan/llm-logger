@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { cn, truncate, formatRelativeTime } from '@/lib/utils';
+import { CONVERSATIONS_CHANGED } from '@/hooks/useConversations';
 import type { ConversationSummary } from '@/types';
 
 const NAV = [
@@ -14,29 +15,52 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Read ?id from the URL on mount and whenever a navigation event fires.
+  // Avoids useSearchParams (which forces a Suspense boundary on every page that uses this layout).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sync = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveId(params.get('id'));
+    };
+    sync();
+    window.addEventListener('popstate', sync);
+    window.addEventListener(CONVERSATIONS_CHANGED, sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener(CONVERSATIONS_CHANGED, sync);
+    };
+  }, [pathname]);
+
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/conversations', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as ConversationSummary[];
+      setConversations(data.slice(0, 12));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/conversations');
-        if (!res.ok) return;
-        const data = (await res.json()) as ConversationSummary[];
-        if (!cancelled) setConversations(data.slice(0, 12));
-      } catch {
-        /* ignore */
-      }
-    };
     void load();
     const interval = setInterval(load, 10_000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [pathname]);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  // Immediate refresh on any conversation mutation anywhere in the app.
+  useEffect(() => {
+    const handler = () => void load();
+    window.addEventListener(CONVERSATIONS_CHANGED, handler);
+    return () => window.removeEventListener(CONVERSATIONS_CHANGED, handler);
+  }, [load]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -144,27 +168,46 @@ export function Sidebar() {
               {conversations.length === 0 && (
                 <div className="px-3 py-2 text-[13px] text-muted">No conversations yet</div>
               )}
-              {conversations.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/chat?id=${c.id}`}
-                  className="block px-3 py-2 rounded-[4px] hover:bg-off-white transition-colors"
-                >
-                  <div className="text-[13px] leading-snug text-[color:var(--color-headline-black)] truncate">
-                    {c.title ?? 'Untitled'}
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="mono-sm">{c.provider}</span>
-                    <span className="mono-sm">·</span>
-                    <span className="mono-sm">{formatRelativeTime(c.updatedAt)}</span>
-                  </div>
-                  {c.lastMessagePreview && (
-                    <div className="mt-1 text-[12px] text-faint truncate">
-                      {truncate(c.lastMessagePreview, 60)}
+              {conversations.map((c) => {
+                const isPaused = c.status === 'PAUSED';
+                const isActive = pathname === '/chat' && c.id === activeId;
+                return (
+                  <Link
+                    key={c.id}
+                    href={`/chat?id=${c.id}`}
+                    className={cn(
+                      'block px-3 py-2 rounded-[4px] transition-colors',
+                      isActive ? 'bg-off-white' : 'hover:bg-off-white'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={cn(
+                          'text-[13px] leading-snug truncate flex-1 min-w-0',
+                          isPaused
+                            ? 'text-[color:var(--color-mid-gray)]'
+                            : 'text-[color:var(--color-headline-black)]'
+                        )}
+                      >
+                        {c.title ?? 'Untitled'}
+                      </div>
+                      {isPaused && (
+                        <span className="badge badge-paused shrink-0">Paused</span>
+                      )}
                     </div>
-                  )}
-                </Link>
-              ))}
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="mono-sm">{c.provider}</span>
+                      <span className="mono-sm">·</span>
+                      <span className="mono-sm">{formatRelativeTime(c.updatedAt)}</span>
+                    </div>
+                    {c.lastMessagePreview && (
+                      <div className="mt-1 text-[12px] text-faint truncate">
+                        {truncate(c.lastMessagePreview, 60)}
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </>
         )}

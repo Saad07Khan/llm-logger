@@ -253,8 +253,7 @@ a {
     background: rgba(184, 168, 80, 0.08);
     color: var(--color-warning);
   }
-  .badge-cancelled,
-  .badge-completed {
+  .badge-paused {
     background: var(--color-surface-cream);
     color: var(--color-icon-gray);
   }

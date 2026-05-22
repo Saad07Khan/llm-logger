@@ -9,9 +9,23 @@ interface UseChatResult {
   isStreaming: boolean;
   streamingText: string;
   error: string | null;
+  notFound: boolean;
   send: (text: string, overrideConversationId?: string) => Promise<void>;
   cancel: () => void;
   refresh: () => Promise<void>;
+}
+
+async function fetchConversation(
+  id: string
+): Promise<ConversationDetail | 'not-found' | 'error'> {
+  try {
+    const res = await fetch(`/api/conversations/${id}`, { cache: 'no-store' });
+    if (res.status === 404) return 'not-found';
+    if (!res.ok) return 'error';
+    return (await res.json()) as ConversationDetail;
+  } catch {
+    return 'error';
+  }
 }
 
 export function useChat(conversationId: string | null): UseChatResult {
@@ -20,27 +34,58 @@ export function useChat(conversationId: string | null): UseChatResult {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
-  const refresh = useCallback(async () => {
-    if (!conversationId) {
-      setConversation(null);
-      setMessages([]);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/conversations/${conversationId}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as ConversationDetail;
-      setConversation(data);
-      setMessages(data.messages);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load conversation');
-    }
-  }, [conversationId]);
+  const abortRef = useRef<AbortController | null>(null);
+  const conversationIdRef = useRef(conversationId);
+  const isStreamingRef = useRef(false);
 
   useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  const refresh = useCallback(async () => {
+    const id = conversationIdRef.current;
+    if (!id) {
+      setConversation(null);
+      setMessages([]);
+      setNotFound(false);
+      return;
+    }
+    const result = await fetchConversation(id);
+    if (conversationIdRef.current !== id) return;
+    if (result === 'not-found') {
+      setConversation(null);
+      setMessages([]);
+      setNotFound(true);
+      return;
+    }
+    if (result === 'error') {
+      setError('Failed to load conversation');
+      return;
+    }
+    setNotFound(false);
+    setConversation(result);
+    setMessages(result.messages);
+  }, []);
+
+  useEffect(() => {
+    if (isStreamingRef.current) return;
+    setError(null);
+    setNotFound(false);
     void refresh();
+  }, [conversationId, refresh]);
+
+  // Cross-component sync: when /conversations mutates state (pause/resume/delete),
+  // pick it up here so the chat view reflects the new status without a reload.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => {
+      if (isStreamingRef.current) return;
+      void refresh();
+    };
+    window.addEventListener('conversations:changed', handler);
+    return () => window.removeEventListener('conversations:changed', handler);
   }, [refresh]);
 
   const cancel = useCallback(() => {
@@ -49,10 +94,12 @@ export function useChat(conversationId: string | null): UseChatResult {
 
   const send = useCallback(
     async (text: string, overrideConversationId?: string) => {
-      const targetId = overrideConversationId ?? conversationId;
-      if (!targetId || !text.trim() || isStreaming) return;
+      const targetId = overrideConversationId ?? conversationIdRef.current;
+      if (!targetId || !text.trim() || isStreamingRef.current) return;
+
       setError(null);
       setIsStreaming(true);
+      isStreamingRef.current = true;
       setStreamingText('');
 
       const optimistic: MessageDTO = {
@@ -113,8 +160,6 @@ export function useChat(conversationId: string | null): UseChatResult {
               setError(data.message ?? 'Stream error');
             } else if (eventName === 'cancelled') {
               break;
-            } else if (eventName === 'done') {
-              /* final */
             }
           }
         }
@@ -126,12 +171,29 @@ export function useChat(conversationId: string | null): UseChatResult {
         }
       } finally {
         setIsStreaming(false);
+        isStreamingRef.current = false;
         setStreamingText('');
         abortRef.current = null;
-        await refresh();
+
+        const result = await fetchConversation(targetId);
+        if (conversationIdRef.current === targetId) {
+          if (result === 'not-found') {
+            setConversation(null);
+            setMessages([]);
+            setNotFound(true);
+          } else if (result !== 'error') {
+            setNotFound(false);
+            setConversation(result);
+            setMessages(result.messages);
+          }
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('conversations:changed'));
+        }
       }
     },
-    [conversationId, isStreaming, refresh]
+    []
   );
 
   return {
@@ -140,6 +202,7 @@ export function useChat(conversationId: string | null): UseChatResult {
     isStreaming,
     streamingText,
     error,
+    notFound,
     send,
     cancel,
     refresh,

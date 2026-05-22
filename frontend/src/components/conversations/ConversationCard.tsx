@@ -15,9 +15,7 @@ interface Props {
 function StatusBadge({ status }: { status: ConversationStatus }) {
   if (status === 'ACTIVE')
     return <span className="badge badge-active">Active</span>;
-  if (status === 'CANCELLED')
-    return <span className="badge badge-cancelled">Cancelled</span>;
-  return <span className="badge badge-completed">Completed</span>;
+  return <span className="badge badge-paused">Paused</span>;
 }
 
 export function ConversationCard({ conversation, onSetStatus, onDelete, featured }: Props) {
@@ -55,9 +53,9 @@ export function ConversationCard({ conversation, onSetStatus, onDelete, featured
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => onSetStatus(conversation.id, 'CANCELLED')}
+            onClick={() => onSetStatus(conversation.id, 'PAUSED')}
           >
-            Cancel
+            Pause
           </button>
         ) : (
           <button

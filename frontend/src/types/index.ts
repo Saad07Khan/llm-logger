@@ -1,6 +1,6 @@
 export type ProviderName = 'gemini' | 'openai' | 'anthropic';
 
-export type ConversationStatus = 'ACTIVE' | 'CANCELLED' | 'COMPLETED';
+export type ConversationStatus = 'ACTIVE' | 'PAUSED';
 export type Role = 'USER' | 'ASSISTANT' | 'SYSTEM';
 export type RequestStatus = 'SUCCESS' | 'ERROR' | 'TIMEOUT' | 'CANCELLED';
 

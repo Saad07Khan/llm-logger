@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  let body: { status?: 'CANCELLED' | 'ACTIVE' | 'COMPLETED'; title?: string; provider?: string };
+  let body: { status?: 'ACTIVE' | 'PAUSED'; title?: string; provider?: string };
   try {
     body = await req.json();
   } catch {

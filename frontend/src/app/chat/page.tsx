@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ProviderSelect } from '@/components/chat/ProviderSelect';
@@ -11,7 +12,9 @@ import type { ProviderId } from '@/lib/llm/factory';
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center mono-sm">Loading…</div>}>
+    <Suspense
+      fallback={<div className="flex-1 flex items-center justify-center mono-sm">Loading…</div>}
+    >
       <ChatPageInner />
     </Suspense>
   );
@@ -22,9 +25,17 @@ function ChatPageInner() {
   const searchParams = useSearchParams();
   const conversationId = searchParams.get('id');
 
-  const { conversations, create, refresh } = useConversations();
-  const { conversation, messages, isStreaming, streamingText, send, cancel } =
-    useChat(conversationId);
+  const { create, refresh, setStatus } = useConversations();
+  const {
+    conversation,
+    messages,
+    isStreaming,
+    streamingText,
+    notFound,
+    send,
+    cancel,
+    refresh: refreshChat,
+  } = useChat(conversationId);
 
   const [provider, setProvider] = useState<ProviderId>('groq');
 
@@ -34,11 +45,12 @@ function ChatPageInner() {
     }
   }, [conversation?.provider]);
 
+  // If the convo we're viewing got deleted elsewhere, bounce back to empty state.
   useEffect(() => {
-    if (!conversationId && conversations.length > 0) {
-      router.replace(`/chat?id=${conversations[0].id}`);
+    if (notFound && conversationId) {
+      router.replace('/chat');
     }
-  }, [conversationId, conversations, router]);
+  }, [notFound, conversationId, router]);
 
   const startNewConversation = async () => {
     const created = await create({ provider });
@@ -67,8 +79,14 @@ function ChatPageInner() {
     await send(text);
   };
 
-  const title = conversation?.title ?? 'New conversation';
-  const showHeadline = messages.length === 0 && !isStreaming;
+  const handleResume = async () => {
+    if (!conversationId) return;
+    await setStatus(conversationId, 'ACTIVE');
+    await Promise.all([refresh(), refreshChat()]);
+  };
+
+  const isPaused = conversation?.status === 'PAUSED';
+  const showBreadcrumb = !!conversation;
 
   return (
     <div className="flex flex-col h-screen">
@@ -78,7 +96,11 @@ function ChatPageInner() {
             Chat
           </div>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <ProviderSelect value={provider} onChange={handleProviderChange} disabled={isStreaming} />
+            <ProviderSelect
+              value={provider}
+              onChange={handleProviderChange}
+              disabled={isStreaming}
+            />
             <button type="button" className="btn btn-outline" onClick={startNewConversation}>
               New
             </button>
@@ -86,33 +108,42 @@ function ChatPageInner() {
         </div>
       </header>
 
-      {showHeadline && (
-        <div className="max-w-container mx-auto w-full px-4 sm:px-8 pt-8 pb-4">
-          <div className="section-label" style={{ display: 'inline-flex' }}>
-            Session
-          </div>
-          <h1
-            className="headline mt-3 break-words"
-            style={{ fontSize: 'clamp(34px, 6vw, 54px)', letterSpacing: '-2.4px' }}
-          >
-            {title}
-          </h1>
-          {conversation?.model && (
-            <div className="mt-3">
-              <span className="badge badge-provider">{conversation.model}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!showHeadline && (
+      {showBreadcrumb && (
         <div className="max-w-container mx-auto w-full px-4 sm:px-8 pt-3 pb-1 flex items-center gap-3 flex-wrap">
-          <div className="text-[15px] truncate min-w-0" style={{ color: 'var(--color-headline-black)' }}>
-            {title}
+          <div
+            className="text-[15px] truncate min-w-0"
+            style={{ color: 'var(--color-headline-black)' }}
+          >
+            {conversation?.title ?? 'Untitled'}
           </div>
           {conversation?.model && (
             <span className="badge badge-provider">{conversation.model}</span>
           )}
+          {isPaused && <span className="badge badge-paused">Paused</span>}
+        </div>
+      )}
+
+      {isPaused && (
+        <div className="max-w-container mx-auto w-full px-4 sm:px-8 pt-3">
+          <div
+            className="surface-card flex flex-wrap items-center gap-3 p-4"
+            style={{ background: 'var(--color-surface-cream)' }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="section-label" style={{ display: 'inline-flex' }}>
+                Paused
+              </div>
+              <p className="mt-2 text-[14px] text-[color:var(--color-headline-black)]">
+                This conversation is paused. Resume it to keep chatting.
+              </p>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={handleResume}>
+              Resume
+            </button>
+            <Link href="/conversations" className="btn btn-ghost">
+              All conversations
+            </Link>
+          </div>
         </div>
       )}
 
@@ -122,7 +153,13 @@ function ChatPageInner() {
         isStreaming={isStreaming}
       />
 
-      <ChatInput onSend={handleSend} onCancel={cancel} isStreaming={isStreaming} />
+      <ChatInput
+        onSend={handleSend}
+        onCancel={cancel}
+        isStreaming={isStreaming}
+        disabled={isPaused}
+        placeholder={isPaused ? 'Resume this conversation to send a message…' : undefined}
+      />
     </div>
   );
 }

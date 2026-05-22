@@ -14,6 +14,13 @@ interface UseConversationsResult {
   rename: (id: string, title: string) => Promise<void>;
 }
 
+export const CONVERSATIONS_CHANGED = 'conversations:changed';
+
+function emitChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(CONVERSATIONS_CHANGED));
+}
+
 export function useConversations(): UseConversationsResult {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +45,14 @@ export function useConversations(): UseConversationsResult {
     void refresh();
   }, [refresh]);
 
+  // Cross-component sync: any mutation anywhere dispatches `conversations:changed`.
+  // Listeners (this hook, Sidebar) refetch immediately — no polling delay.
+  useEffect(() => {
+    const handler = () => void refresh();
+    window.addEventListener(CONVERSATIONS_CHANGED, handler);
+    return () => window.removeEventListener(CONVERSATIONS_CHANGED, handler);
+  }, [refresh]);
+
   const create = useCallback(
     async (opts?: { title?: string; provider?: string }) => {
       try {
@@ -49,6 +64,7 @@ export function useConversations(): UseConversationsResult {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const created = (await res.json()) as ConversationSummary;
         setConversations((prev) => [created, ...prev]);
+        emitChanged();
         return created;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Create failed');
@@ -59,6 +75,9 @@ export function useConversations(): UseConversationsResult {
   );
 
   const setStatus = useCallback(async (id: string, status: ConversationStatus) => {
+    // Optimistic — flip the chip instantly so Pause/Resume feels immediate.
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
+    emitChanged();
     try {
       const res = await fetch(`/api/conversations/${id}`, {
         method: 'PATCH',
@@ -68,20 +87,28 @@ export function useConversations(): UseConversationsResult {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const updated = (await res.json()) as ConversationSummary;
       setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+      emitChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');
+      // Roll back by refetching authoritative state.
+      void refresh();
     }
-  }, []);
+  }, [refresh]);
 
   const remove = useCallback(async (id: string) => {
+    // Optimistic local removal so the dashboard card vanishes instantly.
+    const prevState = conversations;
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    emitChanged();
     try {
       const res = await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
       if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConversations((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
+      setConversations(prevState);
+      emitChanged();
     }
-  }, []);
+  }, [conversations]);
 
   const rename = useCallback(async (id: string, title: string) => {
     try {
@@ -93,6 +120,7 @@ export function useConversations(): UseConversationsResult {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const updated = (await res.json()) as ConversationSummary;
       setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+      emitChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Rename failed');
     }
