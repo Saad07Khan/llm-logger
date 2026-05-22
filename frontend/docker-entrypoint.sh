@@ -1,9 +1,14 @@
 #!/bin/sh
 set -e
 
-echo "[frontend] running prisma migrate deploy"
-./node_modules/.bin/prisma migrate deploy --schema=./prisma/schema.prisma || \
-  ./node_modules/.bin/prisma db push --schema=./prisma/schema.prisma --accept-data-loss
+PRISMA_BIN="./node_modules/prisma/build/index.js"
+
+if [ ! -f "$PRISMA_BIN" ]; then
+  echo "[frontend] prisma CLI missing at $PRISMA_BIN — skipping schema sync"
+else
+  echo "[frontend] running prisma db push"
+  node "$PRISMA_BIN" db push --schema=./prisma/schema.prisma --skip-generate --accept-data-loss
+fi
 
 echo "[frontend] starting next"
 exec node server.js

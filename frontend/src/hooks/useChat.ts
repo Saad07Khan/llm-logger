@@ -9,7 +9,7 @@ interface UseChatResult {
   isStreaming: boolean;
   streamingText: string;
   error: string | null;
-  send: (text: string) => Promise<void>;
+  send: (text: string, overrideConversationId?: string) => Promise<void>;
   cancel: () => void;
   refresh: () => Promise<void>;
 }
@@ -48,15 +48,16 @@ export function useChat(conversationId: string | null): UseChatResult {
   }, []);
 
   const send = useCallback(
-    async (text: string) => {
-      if (!conversationId || !text.trim() || isStreaming) return;
+    async (text: string, overrideConversationId?: string) => {
+      const targetId = overrideConversationId ?? conversationId;
+      if (!targetId || !text.trim() || isStreaming) return;
       setError(null);
       setIsStreaming(true);
       setStreamingText('');
 
       const optimistic: MessageDTO = {
         id: `temp-${Date.now()}`,
-        conversationId,
+        conversationId: targetId,
         role: 'USER',
         content: text,
         tokenCount: null,
@@ -71,7 +72,7 @@ export function useChat(conversationId: string | null): UseChatResult {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversationId, message: text }),
+          body: JSON.stringify({ conversationId: targetId, message: text }),
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {

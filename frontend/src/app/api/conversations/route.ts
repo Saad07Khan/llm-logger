@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
-  const provider = body.provider ?? 'gemini';
+  const provider = body.provider ?? 'groq';
   const model = body.model ?? defaultModelFor(provider);
 
   const conversation = await prisma.conversation.create({

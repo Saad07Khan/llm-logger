@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -10,6 +10,14 @@ import { useConversations } from '@/hooks/useConversations';
 import type { ProviderId } from '@/lib/llm/factory';
 
 export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center mono-sm">Loading…</div>}>
+      <ChatPageInner />
+    </Suspense>
+  );
+}
+
+function ChatPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const conversationId = searchParams.get('id');
@@ -18,7 +26,7 @@ export default function ChatPage() {
   const { conversation, messages, isStreaming, streamingText, send, cancel } =
     useChat(conversationId);
 
-  const [provider, setProvider] = useState<ProviderId>('gemini');
+  const [provider, setProvider] = useState<ProviderId>('groq');
 
   useEffect(() => {
     if (conversation?.provider) {
@@ -53,7 +61,7 @@ export default function ChatPage() {
       const created = await create({ provider, title: text.slice(0, 60) });
       if (!created) return;
       router.replace(`/chat?id=${created.id}`);
-      setTimeout(() => void send(text), 50);
+      await send(text, created.id);
       return;
     }
     await send(text);
