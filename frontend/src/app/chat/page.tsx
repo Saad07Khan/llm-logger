@@ -15,7 +15,7 @@ export default function ChatPage() {
   const conversationId = searchParams.get('id');
 
   const { conversations, create, refresh } = useConversations();
-  const { conversation, messages, isStreaming, streamingText, error, send, cancel } =
+  const { conversation, messages, isStreaming, streamingText, send, cancel } =
     useChat(conversationId);
 
   const [provider, setProvider] = useState<ProviderId>('gemini');
@@ -60,25 +60,16 @@ export default function ChatPage() {
   };
 
   const title = conversation?.title ?? 'New conversation';
+  const showHeadline = messages.length === 0 && !isStreaming;
 
   return (
     <div className="flex flex-col h-screen">
       <header className="nav-bar sticky top-0 z-10">
-        <div className="max-w-[920px] mx-auto px-6 h-14 flex items-center justify-between gap-4">
-          <div className="min-w-0 flex items-center gap-3">
-            <div className="section-label" style={{ display: 'inline-flex' }}>
-              Chat
-            </div>
-            <div className="text-[15px] truncate" style={{ color: 'var(--color-headline-black)' }}>
-              {title}
-            </div>
-            {conversation?.model && (
-              <span className="badge badge-provider hidden sm:inline-flex">
-                {conversation.model}
-              </span>
-            )}
+        <div className="max-w-container mx-auto pl-16 pr-4 sm:pl-4 sm:pr-6 md:px-8 h-14 flex items-center justify-between gap-3 flex-wrap">
+          <div className="section-label" style={{ display: 'inline-flex' }}>
+            Chat
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto flex-wrap">
             <ProviderSelect value={provider} onChange={handleProviderChange} disabled={isStreaming} />
             <button type="button" className="btn btn-outline" onClick={startNewConversation}>
               New
@@ -87,9 +78,33 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {error && (
-        <div className="max-w-[920px] mx-auto px-6 pt-3 w-full">
-          <div className="badge badge-error">Error · {error}</div>
+      {showHeadline && (
+        <div className="max-w-container mx-auto w-full px-4 sm:px-8 pt-8 pb-4">
+          <div className="section-label" style={{ display: 'inline-flex' }}>
+            Session
+          </div>
+          <h1
+            className="headline mt-3 break-words"
+            style={{ fontSize: 'clamp(34px, 6vw, 54px)', letterSpacing: '-2.4px' }}
+          >
+            {title}
+          </h1>
+          {conversation?.model && (
+            <div className="mt-3">
+              <span className="badge badge-provider">{conversation.model}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!showHeadline && (
+        <div className="max-w-container mx-auto w-full px-4 sm:px-8 pt-3 pb-1 flex items-center gap-3 flex-wrap">
+          <div className="text-[15px] truncate min-w-0" style={{ color: 'var(--color-headline-black)' }}>
+            {title}
+          </div>
+          {conversation?.model && (
+            <span className="badge badge-provider">{conversation.model}</span>
+          )}
         </div>
       )}
 

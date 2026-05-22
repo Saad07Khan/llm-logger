@@ -16,7 +16,7 @@ const FILTERS: Array<{ key: 'ALL' | ConversationStatus; label: string }> = [
 
 export default function ConversationsPage() {
   const router = useRouter();
-  const { conversations, loading, error, create, setStatus, remove } = useConversations();
+  const { conversations, loading, create, setStatus, remove } = useConversations();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('ALL');
 
   const filtered = useMemo(() => {
@@ -41,7 +41,7 @@ export default function ConversationsPage() {
   return (
     <div className="flex-1">
       <header className="nav-bar sticky top-0 z-10">
-        <div className="max-w-container mx-auto px-8 h-14 flex items-center justify-between">
+        <div className="max-w-container mx-auto pl-16 pr-4 sm:pl-4 sm:pr-6 md:px-8 h-14 flex items-center justify-between gap-3 flex-wrap">
           <div className="section-label" style={{ display: 'inline-flex' }}>
             Conversations
           </div>
@@ -51,8 +51,11 @@ export default function ConversationsPage() {
         </div>
       </header>
 
-      <div className="max-w-container mx-auto px-8 py-10">
-        <h1 className="headline" style={{ fontSize: 54, letterSpacing: '-2.4px' }}>
+      <div className="max-w-container mx-auto px-4 sm:px-8 py-8 sm:py-10">
+        <h1
+          className="headline break-words"
+          style={{ fontSize: 'clamp(40px, 6vw, 54px)', letterSpacing: '-2.4px' }}
+        >
           Conversations
         </h1>
         <p className="mt-3 text-[15px] text-muted max-w-[520px]">
@@ -60,12 +63,12 @@ export default function ConversationsPage() {
           triage active or cancelled sessions.
         </p>
 
-        <div className="mt-8 flex items-center gap-1 border-b border-sand">
+        <div className="mt-8 flex items-center gap-1 border-b border-sand overflow-x-auto scrollbar-thin">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               type="button"
-              className={cn('tab', filter === f.key && 'tab-active')}
+              className={cn('tab shrink-0', filter === f.key && 'tab-active')}
               onClick={() => setFilter(f.key)}
             >
               {f.label}
@@ -73,12 +76,6 @@ export default function ConversationsPage() {
             </button>
           ))}
         </div>
-
-        {error && (
-          <div className="mt-6">
-            <span className="badge badge-error">Error · {error}</span>
-          </div>
-        )}
 
         {loading && conversations.length === 0 ? (
           <div className="mt-10 mono-sm">Loading conversations…</div>

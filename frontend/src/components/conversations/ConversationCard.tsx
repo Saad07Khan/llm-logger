@@ -22,11 +22,11 @@ function StatusBadge({ status }: { status: ConversationStatus }) {
 
 export function ConversationCard({ conversation, onSetStatus, onDelete, featured }: Props) {
   const inner = (
-    <div className="flex flex-col h-full p-6 gap-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="flex flex-col h-full p-5 sm:p-6 gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <Link
           href={`/chat?id=${conversation.id}`}
-          className="text-[18px] leading-snug headline hover:text-[color:var(--color-accent-violet)] transition-colors flex-1 min-w-0"
+          className="text-[18px] leading-snug headline hover:text-[color:var(--color-accent-violet)] transition-colors flex-1 min-w-0 break-words"
           style={{ fontSize: 20, letterSpacing: '-0.6px' }}
         >
           {conversation.title ?? 'Untitled conversation'}
@@ -47,7 +47,7 @@ export function ConversationCard({ conversation, onSetStatus, onDelete, featured
         <span className="mono-sm">{formatRelativeTime(conversation.updatedAt)}</span>
       </div>
 
-      <div className="flex items-center gap-2 pt-2 border-t border-sand">
+      <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-sand">
         <Link href={`/chat?id=${conversation.id}`} className="btn btn-outline">
           Open
         </Link>

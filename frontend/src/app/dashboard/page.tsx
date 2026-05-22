@@ -11,7 +11,7 @@ import { useDashboard } from '@/hooks/useDashboard';
 import { formatLatency, formatNumber } from '@/lib/utils';
 
 export default function DashboardPage() {
-  const { metrics, loading, error, period, setPeriod } = useDashboard('24h');
+  const { metrics, loading, period, setPeriod } = useDashboard('24h');
 
   const total = metrics?.totalRequests ?? 0;
   const avg = metrics?.avgLatencyMs ?? 0;
@@ -21,20 +21,25 @@ export default function DashboardPage() {
   const rpm = metrics?.requestsPerMinute ?? 0;
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 min-w-0">
       <header className="nav-bar sticky top-0 z-10">
-        <div className="max-w-container mx-auto px-8 h-14 flex items-center justify-between">
+        <div className="max-w-container mx-auto pl-16 pr-4 sm:pl-4 sm:pr-6 md:px-8 h-14 flex items-center justify-between gap-3 flex-wrap">
           <div className="section-label" style={{ display: 'inline-flex' }}>
             Inference metrics
           </div>
-          <PeriodTabs value={period} onChange={setPeriod} />
+          <div className="overflow-x-auto scrollbar-thin -mx-1 px-1">
+            <PeriodTabs value={period} onChange={setPeriod} />
+          </div>
         </div>
       </header>
 
-      <div className="max-w-container mx-auto px-8 py-10">
+      <div className="max-w-container mx-auto px-4 sm:px-8 py-8 sm:py-10">
         <div className="flex items-end justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="headline" style={{ fontSize: 54, letterSpacing: '-2.4px' }}>
+            <h1
+              className="headline break-words"
+              style={{ fontSize: 'clamp(40px, 6vw, 54px)', letterSpacing: '-2.4px' }}
+            >
               Dashboard
             </h1>
             <p className="mt-3 text-[15px] text-muted max-w-[520px]">
@@ -47,13 +52,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {error && (
-          <div className="mt-6">
-            <span className="badge badge-error">Error · {error}</span>
-          </div>
-        )}
-
-        <div className="mt-10 grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Total requests"
             value={formatNumber(total)}
@@ -77,25 +76,25 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="mt-10 grid gap-5 grid-cols-1 lg:grid-cols-3">
-          <Bracketed className="cream-card dot-grid">
-            <div className="flex items-center justify-between mb-3">
+        <div className="mt-10 grid gap-4 sm:gap-5 grid-cols-1 lg:grid-cols-3">
+          <Bracketed className="cream-card dot-grid min-w-0">
+            <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
               <div className="mono">Latency over time</div>
               <span className="mono-sm">avg ms</span>
             </div>
             <LatencyChart data={metrics?.latencyTimeSeries ?? []} />
           </Bracketed>
 
-          <Bracketed className="cream-card dot-grid">
-            <div className="flex items-center justify-between mb-3">
+          <Bracketed className="cream-card dot-grid min-w-0">
+            <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
               <div className="mono">Throughput</div>
               <span className="mono-sm">requests</span>
             </div>
             <ThroughputChart data={metrics?.throughputTimeSeries ?? []} />
           </Bracketed>
 
-          <Bracketed className="cream-card dot-grid">
-            <div className="flex items-center justify-between mb-3">
+          <Bracketed className="cream-card dot-grid min-w-0">
+            <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
               <div className="mono">Errors</div>
               <span className="mono-sm">count</span>
             </div>
@@ -105,7 +104,9 @@ export default function DashboardPage() {
 
         <div className="mt-10">
           <div className="mono mb-3">Provider breakdown</div>
-          <ProviderTable rows={metrics?.byProvider ?? {}} />
+          <div className="overflow-x-auto scrollbar-thin">
+            <ProviderTable rows={metrics?.byProvider ?? {}} />
+          </div>
         </div>
       </div>
     </div>
